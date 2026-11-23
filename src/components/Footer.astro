@@ -1,23 +1,16 @@
 ---
+import { SITE_TITLE } from '../consts';
+
 const year = new Date().getFullYear();
 ---
 
-<footer>
-	<p>
-		&copy; {year} 立青 · 用 <a href="https://astro.build/" target="_blank" rel="noopener">Astro</a> 构建
-	</p>
+<footer class="site-footer">
+	<div class="container">
+		<span>&copy; {year} {SITE_TITLE} · 保留所有权利</span>
+		<span>
+			<a href="/rss.xml">RSS</a>
+			<span aria-hidden="true">·</span>
+			<a href="https://github.com/chenliqing114514/liqing-blog" target="_blank" rel="noopener">GitHub</a>
+		</span>
+	</div>
 </footer>
-<style>
-	footer {
-		padding: 2em 1em 6em 1em;
-		background: linear-gradient(var(--gray-gradient)) no-repeat;
-		color: rgb(var(--gray));
-		text-align: center;
-	}
-	footer p {
-		margin: 0;
-	}
-	footer a {
-		color: rgb(var(--gray));
-	}
-</style>

@@ -13,8 +13,11 @@ type Props = CollectionEntry<'blog'>;
 
 const post = Astro.props;
 const { Content } = await render(post);
+
+// 中文按约 400 字/分钟估算阅读时间
+const readingTime = Math.max(1, Math.round((post.body?.length ?? 0) / 400));
 ---
 
-<BlogPost {...post.data}>
+<BlogPost {...post.data} readingTime={readingTime} comments>
 	<Content />
 </BlogPost>
