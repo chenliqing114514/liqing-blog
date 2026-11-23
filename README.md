@@ -1,11 +1,12 @@
-# 我的博客
+# 立青
 
 用 [Astro](https://astro.build/) 搭建的静态博客，托管在 GitHub，部署在 Vercel。
+线上地址：<https://liqing-blog.vercel.app>
 
 ## 本地运行
 
 ```powershell
-cd C:\Users\陈\Downloads\my-blog
+cd C:\Users\陈\Downloads\liqing-blog
 npm install      # 第一次或依赖变化后执行
 npm run dev      # 打开 http://localhost:4321
 npm run build    # 构建到 dist/，推送前可先自检
