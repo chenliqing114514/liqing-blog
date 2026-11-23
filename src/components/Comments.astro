@@ -1,26 +1,353 @@
 ---
-// Giscus 评论：基于 GitHub Discussions，无广告、免费
-// 数据来自 https://giscus.app ，仓库需安装 giscus App
+const path = Astro.url.pathname;
 ---
 
-<section class="comments" aria-label="评论区">
-	<h2>评论</h2>
-	<script
-		is:inline
-		src="https://giscus.app/client.js"
-		data-repo="chenliqing114514/liqing-blog"
-		data-repo-id="R_kgDOV4wbXg"
-		data-category="General"
-		data-category-id="DIC_kwDOV4wbXs4DLzUB"
-		data-mapping="pathname"
-		data-strict="0"
-		data-reactions-enabled="1"
-		data-emit-metadata="0"
-		data-input-position="top"
-		data-theme="light"
-		data-lang="zh-CN"
-		data-loading="lazy"
-		crossorigin="anonymous"
-		async></script>
-	<noscript>评论功能需要启用 JavaScript。</noscript>
+<section class="comments" id="comments" data-path={path} data-api="/api/comments">
+	<div class="comments-head">
+		<h2>评论</h2>
+		<span class="comments-count" data-count></span>
+	</div>
+
+	<form class="comment-form" data-form novalidate>
+		<div class="field-row">
+			<label class="sr-only" for="comment-name">昵称</label>
+			<input
+				id="comment-name"
+				name="name"
+				type="text"
+				maxlength="24"
+				placeholder="昵称"
+				autocomplete="nickname"
+				required
+			/>
+			<input class="hp" name="website" type="text" tabindex="-1" autocomplete="off" aria-hidden="true" />
+		</div>
+
+		<label class="sr-only" for="comment-content">评论内容</label>
+		<textarea
+			id="comment-content"
+			name="content"
+			rows="4"
+			maxlength="2000"
+			placeholder="说点什么……"
+			required></textarea>
+
+		<div class="form-foot">
+			<span class="hint" data-hint>昵称必填，评论会立即显示</span>
+			<button type="submit" data-submit>发表评论</button>
+		</div>
+	</form>
+
+	<ul class="comment-list" data-list></ul>
+	<p class="empty" data-empty hidden>还没有评论，来写第一条吧。</p>
 </section>
+
+<script>
+	const section = document.getElementById('comments');
+	if (section) {
+		const api = section.dataset.api;
+		const path = section.dataset.path;
+		const list = section.querySelector('[data-list]');
+		const empty = section.querySelector('[data-empty]');
+		const count = section.querySelector('[data-count]');
+		const form = section.querySelector('[data-form]');
+		const hint = section.querySelector('[data-hint]');
+		const submit = section.querySelector('[data-submit]');
+		const nameInput = section.querySelector('#comment-name');
+		const contentInput = section.querySelector('#comment-content');
+
+		nameInput.value = localStorage.getItem('comment-name') || '';
+
+		function formatTime(value) {
+			const d = new Date(value.replace(' ', 'T') + 'Z');
+			if (Number.isNaN(d.getTime())) return '';
+			const diff = (Date.now() - d.getTime()) / 1000;
+			if (diff < 60) return '刚刚';
+			if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`;
+			if (diff < 86400) return `${Math.floor(diff / 3600)} 小时前`;
+			if (diff < 86400 * 7) return `${Math.floor(diff / 86400)} 天前`;
+			return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+		}
+
+		function renderComment(c) {
+			const li = document.createElement('li');
+			li.className = 'comment';
+
+			const avatar = document.createElement('span');
+			avatar.className = 'avatar';
+			avatar.textContent = (c.name || '?').slice(0, 1);
+
+			const body = document.createElement('div');
+			body.className = 'body';
+
+			const head = document.createElement('div');
+			head.className = 'meta';
+			const who = document.createElement('strong');
+			who.textContent = c.name;
+			const when = document.createElement('time');
+			when.textContent = formatTime(c.created_at);
+			head.append(who, when);
+
+			const text = document.createElement('p');
+			text.className = 'text';
+			text.textContent = c.content;
+
+			body.append(head, text);
+			li.append(avatar, body);
+			return li;
+		}
+
+		function updateCount(n) {
+			count.textContent = n > 0 ? `${n} 条` : '';
+			empty.hidden = n > 0;
+		}
+
+		async function load() {
+			try {
+				const res = await fetch(`${api}?path=${encodeURIComponent(path)}`);
+				if (!res.ok) throw new Error('bad response');
+				const data = await res.json();
+				const comments = data.comments || [];
+				list.replaceChildren(...comments.map(renderComment));
+				updateCount(comments.length);
+			} catch {
+				hint.textContent = '评论加载失败，请刷新重试';
+				hint.classList.add('error');
+			}
+		}
+
+		form.addEventListener('submit', async (event) => {
+			event.preventDefault();
+			const name = nameInput.value.trim();
+			const content = contentInput.value.trim();
+			const website = form.elements.website?.value ?? '';
+
+			if (!name) {
+				hint.textContent = '请填写昵称';
+				hint.classList.add('error');
+				nameInput.focus();
+				return;
+			}
+			if (!content) {
+				hint.textContent = '评论内容不能为空';
+				hint.classList.add('error');
+				contentInput.focus();
+				return;
+			}
+
+			submit.disabled = true;
+			submit.textContent = '发送中…';
+			hint.classList.remove('error');
+			hint.textContent = '';
+
+			try {
+				const res = await fetch(api, {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({ path, name, content, website }),
+				});
+				const data = await res.json();
+				if (!res.ok) throw new Error(data.error || '发表失败');
+
+				localStorage.setItem('comment-name', name);
+				list.prepend(renderComment(data.comment));
+				updateCount(list.children.length);
+				contentInput.value = '';
+				hint.textContent = '已发布';
+			} catch (error) {
+				hint.textContent = error.message || '发表失败，请稍后再试';
+				hint.classList.add('error');
+			} finally {
+				submit.disabled = false;
+				submit.textContent = '发表评论';
+			}
+		});
+
+		load();
+	}
+</script>
+
+<style is:global>
+	.comments {
+		margin-top: 4rem;
+		padding-top: 2rem;
+		border-top: 1px solid var(--border);
+	}
+
+	.comments-head {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 1rem;
+		margin-bottom: 1.25rem;
+	}
+
+	.comments-head h2 {
+		margin: 0;
+		font-size: 1.1rem;
+	}
+
+	.comments-count {
+		color: var(--text-muted);
+		font-size: 0.85rem;
+	}
+
+	.comment-form {
+		padding: 1rem 1.1rem;
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		background: var(--surface);
+	}
+
+	.field-row {
+		position: relative;
+	}
+
+	.comment-form input[type='text'],
+	.comment-form textarea {
+		width: 100%;
+		padding: 0.6rem 0.75rem;
+		border: 1px solid var(--border);
+		border-radius: 6px;
+		background: var(--bg);
+		color: var(--text);
+		font-family: inherit;
+		font-size: 0.95rem;
+		line-height: 1.6;
+	}
+
+	.comment-form input[type='text'] {
+		max-width: 240px;
+	}
+
+	.comment-form textarea {
+		margin-top: 0.6rem;
+		resize: vertical;
+		min-height: 96px;
+	}
+
+	.comment-form input:focus,
+	.comment-form textarea:focus {
+		outline: none;
+		border-color: var(--accent);
+		box-shadow: 0 0 0 3px var(--accent-soft);
+	}
+
+	.comment-form .hp {
+		position: absolute;
+		left: -9999px;
+		width: 1px;
+		height: 1px;
+		opacity: 0;
+	}
+
+	.form-foot {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		margin-top: 0.7rem;
+	}
+
+	.hint {
+		color: var(--text-muted);
+		font-size: 0.82rem;
+	}
+
+	.hint.error {
+		color: #b42318;
+	}
+
+	.comment-form button {
+		padding: 0.5rem 1rem;
+		border: 0;
+		border-radius: 6px;
+		background: var(--accent);
+		color: #fff;
+		font-family: inherit;
+		font-size: 0.9rem;
+		cursor: pointer;
+	}
+
+	.comment-form button:hover {
+		background: var(--accent-hover);
+	}
+
+	.comment-form button:disabled {
+		opacity: 0.6;
+		cursor: default;
+	}
+
+	.comment-list {
+		list-style: none;
+		margin: 1.75rem 0 0;
+		padding: 0;
+	}
+
+	.comment {
+		display: flex;
+		gap: 0.8rem;
+		padding: 1rem 0;
+		border-top: 1px solid var(--border);
+	}
+
+	.comment:first-child {
+		border-top: 0;
+	}
+
+	.comment .avatar {
+		flex: none;
+		display: grid;
+		place-items: center;
+		width: 36px;
+		height: 36px;
+		border-radius: 50%;
+		background: var(--accent-soft);
+		color: var(--accent);
+		font-size: 0.95rem;
+		font-weight: 600;
+	}
+
+	.comment .body {
+		min-width: 0;
+		flex: 1;
+	}
+
+	.comment .meta {
+		display: flex;
+		align-items: baseline;
+		gap: 0.6rem;
+		font-size: 0.85rem;
+		color: var(--text-muted);
+	}
+
+	.comment .meta strong {
+		color: var(--text);
+		font-weight: 600;
+	}
+
+	.comment .text {
+		margin: 0.25rem 0 0;
+		font-size: 0.95rem;
+		line-height: 1.75;
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
+	}
+
+	.empty {
+		margin: 1.5rem 0 0;
+		color: var(--text-muted);
+		font-size: 0.9rem;
+	}
+
+	@media (max-width: 640px) {
+		.comment-form input[type='text'] {
+			max-width: none;
+		}
+
+		.form-foot {
+			flex-direction: column;
+			align-items: flex-start;
+		}
+	}
+</style>
