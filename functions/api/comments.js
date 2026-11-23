@@ -23,13 +23,7 @@ async function sha256(text) {
 }
 
 export async function onRequestGet({ request, env }) {
-	const url = new URL(request.url);
-	// 临时清理入口（删除后立即撤销）
-	if (url.searchParams.get('purge') === 'c7f1a9e2d4b84f0e9a6c3b5d1e8f2a70') {
-		const info = await env.DB.prepare('DELETE FROM comments WHERE id = 1').run();
-		return json({ purged: info.meta?.changes ?? 0 });
-	}
-	const path = url.searchParams.get('path') ?? '';
+	const path = new URL(request.url).searchParams.get('path') ?? '';
 	if (!path.startsWith('/') || path.length > 200) {
 		return json({ error: '无效的页面路径' }, 400);
 	}
