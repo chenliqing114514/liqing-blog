@@ -6,8 +6,8 @@ import { defineConfig, fontProviders } from 'astro/config';
 
 // https://astro.build/config
 export default defineConfig({
-	// 部署后改成你的真实域名，RSS 和 sitemap 依赖它
-	site: 'https://my-blog.vercel.app',
+	// 主站地址（Cloudflare Pages，国内可访问）；RSS 与 sitemap 依赖它
+	site: 'https://liqing-blog.pages.dev',
 	integrations: [mdx(), sitemap()],
 	fonts: [
 		{

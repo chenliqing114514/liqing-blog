@@ -1,7 +1,9 @@
 # 立青
 
-用 [Astro](https://astro.build/) 搭建的静态博客，托管在 GitHub，部署在 Vercel。
-线上地址：<https://liqing-blog.vercel.app>
+用 [Astro](https://astro.build/) 搭建的静态博客，托管在 GitHub，部署在 Cloudflare Pages。
+
+- 线上地址（国内可访问）：<https://liqing-blog.pages.dev>
+- 备用地址（Vercel，国内需代理）：<https://liqing-blog.vercel.app>
 
 ## 本地运行
 
